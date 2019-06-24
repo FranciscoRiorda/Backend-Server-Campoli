@@ -1,15 +1,13 @@
 var express = require('express');
-var bcrypt = require('bcryptjs');
-var jwt = require('jsonwebtoken');
 
 var mdAutenticacion = require('../middlewares/autenticacion');
 
 var app = express();
 
-var Usuario = require('../models/usuario');
+var AdultoReferente = require('../models/adultoReferente');
 
 // =================================
-// Obtener todos los usuarios
+// Obtener todos las adultosReferentes
 // =================================
 
 app.get('/', (req, res, next) => {
@@ -17,25 +15,29 @@ app.get('/', (req, res, next) => {
     var desde = req.query.desde || 0;
     desde = Number(desde);
 
-    Usuario.find({}, 'nombre email img role')
+    AdultoReferente.find({})
         .skip(desde)
         .limit(5)
-        .exec((err, usuarios) => {
+        .populate('persona', 'nombre apellido cuit telefono')
+        .populate('cargo')
+        .populate('usuario', 'nombre email')
+        .exec((err, adultosReferentes) => {
 
             if (err) {
                 return res.status(500).json({
                     ok: false,
-                    mensaje: 'Error cargando usuario',
+                    mensaje: 'Error cargando adultoReferente',
                     errors: err
                 });
             }
 
-            Usuario.count({}, (err, conteo) => {
+            AdultoReferente.count({}, (err, conteo) => {
 
                 res.status(200).json({
                     ok: true,
-                    usuarios: usuarios,
+                    adultosReferentes: adultosReferentes,
                     total: conteo
+
                 })
             });
         });
@@ -44,50 +46,48 @@ app.get('/', (req, res, next) => {
 
 
 // =================================
-// Actualizar usuario
+// Actualizar adultoReferente
 // =================================
 app.put('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
     var id = req.params.id;
     var body = req.body;
 
-    Usuario.findById(id, (err, usuario) => {
+    AdultoReferente.findById(id, (err, adultoReferente) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'Error al buscar usuario',
+                mensaje: 'Error al buscar adultoReferente',
                 errors: err
             });
         }
 
-        if (!usuario) {
+        if (!adultoReferente) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'El usuario con el id' + id + 'no existe',
-                errors: { message: 'No existe usuario con ese ID' }
+                mensaje: 'El adultoReferente con el id' + id + 'no existe',
+                errors: { message: 'No existe adultoReferente con ese ID' }
             });
         }
 
-        usuario.nombre = body.nombre;
-        usuario.email = body.email;
-        usuario.role = body.role;
+        adultoReferente.persona = body.persona;
+        adultoReferente.cargo = body.cargo;
+        adultoReferente.usuario = req.usuario._id;
 
-        usuario.save((err, usuarioGuardado) => {
+        adultoReferente.save((err, adultoReferenteGuardado) => {
 
             if (err) {
                 return res.status(400).json({
                     ok: false,
-                    mensaje: 'Error al actualizar usuario',
+                    mensaje: 'Error al actualizar adultoReferente',
                     errors: err
                 });
             }
 
-            usuarioGuardado.password = ':)';
-
             res.status(200).json({
                 ok: true,
-                usuario: usuarioGuardado
+                adultoReferente: adultoReferenteGuardado
             });
         })
 
@@ -97,68 +97,66 @@ app.put('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
 
 // =================================
-// Crear un nuevo usuario
+// Crear un nuevo adultoReferente
 // =================================
 
 app.post('/', mdAutenticacion.verificaToken, (req, res) => {
 
     var body = req.body;
 
-    var usuario = new Usuario({
-        nombre: body.nombre,
-        email: body.email,
-        password: bcrypt.hashSync(body.password, 10),
-        img: body.img,
-        role: body.role
+    var adultoReferente = new AdultoReferente({
+        persona: body.persona,
+        cargo: body.cargo,
+        usuario: req.usuario._id
+
 
     });
 
-    usuario.save((err, usuarioGuardado) => {
+    adultoReferente.save((err, adultoReferenteGuardado) => {
 
         if (err) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'Error al crear usuario',
+                mensaje: 'Error al crear adultoReferente',
                 errors: err
             });
         }
 
         res.status(201).json({
             ok: true,
-            usuario: usuarioGuardado,
-            usuariotoken: req.usuario
+            usuario: adultoReferenteGuardado
         });
     });
 });
 
 // =================================
-// Borrar un usuario por el ID
+// Borrar un adultoReferente por el ID
 // =================================
 
 app.delete('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
     var id = req.params.id;
 
-    Usuario.findByIdAndRemove(id, (err, usuarioBorrado) => {
+    AdultoReferente.findByIdAndRemove(id, (err, adultoReferenteBorrado) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'Error al borrar usuario',
+                mensaje: 'Error al borrar adultoReferente',
                 errors: err
             });
         }
-        if (!usuarioBorrado) {
+        if (!adultoReferenteBorrado) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'No existe usuario con ese id',
-                errors: { message: 'No existe usuario con ese id' }
+                mensaje: 'No existe adultoReferente con ese id',
+                errors: { message: 'No existe adultoReferente con ese id' }
             });
         }
 
         res.status(200).json({
             ok: true,
-            usuario: usuarioBorrado
+            adultoReferente: adultoReferenteBorrado
         });
     });
 });

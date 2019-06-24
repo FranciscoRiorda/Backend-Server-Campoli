@@ -1,15 +1,13 @@
 var express = require('express');
-var bcrypt = require('bcryptjs');
-var jwt = require('jsonwebtoken');
 
 var mdAutenticacion = require('../middlewares/autenticacion');
 
 var app = express();
 
-var Usuario = require('../models/usuario');
+var Persona = require('../models/persona');
 
 // =================================
-// Obtener todos los usuarios
+// Obtener todos los personas
 // =================================
 
 app.get('/', (req, res, next) => {
@@ -17,24 +15,26 @@ app.get('/', (req, res, next) => {
     var desde = req.query.desde || 0;
     desde = Number(desde);
 
-    Usuario.find({}, 'nombre email img role')
+    Persona.find({})
         .skip(desde)
         .limit(5)
-        .exec((err, usuarios) => {
+        .populate('usuario', 'nombre email')
+        .populate('cargo')
+        .exec((err, personas) => {
 
             if (err) {
                 return res.status(500).json({
                     ok: false,
-                    mensaje: 'Error cargando usuario',
+                    mensaje: 'Error cargando persona',
                     errors: err
                 });
             }
 
-            Usuario.count({}, (err, conteo) => {
+            Persona.count({}, (err, conteo) => {
 
                 res.status(200).json({
                     ok: true,
-                    usuarios: usuarios,
+                    personas: personas,
                     total: conteo
                 })
             });
@@ -44,50 +44,55 @@ app.get('/', (req, res, next) => {
 
 
 // =================================
-// Actualizar usuario
+// Actualizar persona
 // =================================
 app.put('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
     var id = req.params.id;
     var body = req.body;
 
-    Usuario.findById(id, (err, usuario) => {
+    Persona.findById(id, (err, persona) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'Error al buscar usuario',
+                mensaje: 'Error al buscar persona',
                 errors: err
             });
         }
 
-        if (!usuario) {
+        if (!persona) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'El usuario con el id' + id + 'no existe',
-                errors: { message: 'No existe usuario con ese ID' }
+                mensaje: 'El persona con el id' + id + 'no existe',
+                errors: { message: 'No existe persona con ese ID' }
             });
         }
 
-        usuario.nombre = body.nombre;
-        usuario.email = body.email;
-        usuario.role = body.role;
+        persona.nombre = body.nombre;
+        persona.apellido = body.apellido;
+        persona.cuit = body.cuit;
+        persona.telefono = body.telefono;
+        persona.domicilio = body.domicilio;
+        persona.cargaHoraria = body.cargaHoraria;
+        persona.insumos = body.insumos;
+        persona.total = body.total;
+        persona.cargo = body.cargo;
+        persona.usuario = req.usuario._id;
 
-        usuario.save((err, usuarioGuardado) => {
+        persona.save((err, personaGuardada) => {
 
             if (err) {
                 return res.status(400).json({
                     ok: false,
-                    mensaje: 'Error al actualizar usuario',
+                    mensaje: 'Error al actualizar persona',
                     errors: err
                 });
             }
 
-            usuarioGuardado.password = ':)';
-
             res.status(200).json({
                 ok: true,
-                usuario: usuarioGuardado
+                persona: personaGuardada
             });
         })
 
@@ -97,68 +102,74 @@ app.put('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
 
 // =================================
-// Crear un nuevo usuario
+// Crear una nueva persona
 // =================================
 
 app.post('/', mdAutenticacion.verificaToken, (req, res) => {
 
     var body = req.body;
 
-    var usuario = new Usuario({
+    var persona = new Persona({
         nombre: body.nombre,
-        email: body.email,
-        password: bcrypt.hashSync(body.password, 10),
-        img: body.img,
-        role: body.role
+        apellido: body.apellido,
+        cuit: body.cuit,
+        telefono: body.telefono,
+        domicilio: body.domicilio,
+        cargaHoraria: body.cargaHoraria,
+        honorarios: body.honorarios,
+        insumos: body.insumos,
+        total: body.total,
+        cargo: body.cargo,
+        usuario: req.usuario._id
+
 
     });
 
-    usuario.save((err, usuarioGuardado) => {
+    persona.save((err, personaGuardado) => {
 
         if (err) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'Error al crear usuario',
+                mensaje: 'Error al crear persona',
                 errors: err
             });
         }
 
         res.status(201).json({
             ok: true,
-            usuario: usuarioGuardado,
-            usuariotoken: req.usuario
+            usuario: personaGuardado
         });
     });
 });
 
 // =================================
-// Borrar un usuario por el ID
+// Borrar una persona por el ID
 // =================================
 
 app.delete('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
     var id = req.params.id;
 
-    Usuario.findByIdAndRemove(id, (err, usuarioBorrado) => {
+    Persona.findByIdAndRemove(id, (err, personaBorrada) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'Error al borrar usuario',
+                mensaje: 'Error al borrar persona',
                 errors: err
             });
         }
-        if (!usuarioBorrado) {
+        if (!personaBorrada) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'No existe usuario con ese id',
-                errors: { message: 'No existe usuario con ese id' }
+                mensaje: 'No existe persona con ese id',
+                errors: { message: 'No existe persona con ese id' }
             });
         }
 
         res.status(200).json({
             ok: true,
-            usuario: usuarioBorrado
+            persona: personaBorrada
         });
     });
 });

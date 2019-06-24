@@ -1,15 +1,13 @@
 var express = require('express');
-var bcrypt = require('bcryptjs');
-var jwt = require('jsonwebtoken');
 
 var mdAutenticacion = require('../middlewares/autenticacion');
 
 var app = express();
 
-var Usuario = require('../models/usuario');
+var Sede = require('../models/sede');
 
 // =================================
-// Obtener todos los usuarios
+// Obtener todos las sedes
 // =================================
 
 app.get('/', (req, res, next) => {
@@ -17,24 +15,25 @@ app.get('/', (req, res, next) => {
     var desde = req.query.desde || 0;
     desde = Number(desde);
 
-    Usuario.find({}, 'nombre email img role')
+    Sede.find({})
         .skip(desde)
         .limit(5)
-        .exec((err, usuarios) => {
+        .populate('usuario', 'nombre email')
+        .exec((err, sedes) => {
 
             if (err) {
                 return res.status(500).json({
                     ok: false,
-                    mensaje: 'Error cargando usuario',
+                    mensaje: 'Error cargando sede',
                     errors: err
                 });
             }
 
-            Usuario.count({}, (err, conteo) => {
+            Sede.count({}, (err, conteo) => {
 
                 res.status(200).json({
                     ok: true,
-                    usuarios: usuarios,
+                    sedes: sedes,
                     total: conteo
                 })
             });
@@ -44,50 +43,48 @@ app.get('/', (req, res, next) => {
 
 
 // =================================
-// Actualizar usuario
+// Actualizar sede
 // =================================
 app.put('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
     var id = req.params.id;
     var body = req.body;
 
-    Usuario.findById(id, (err, usuario) => {
+    Sede.findById(id, (err, sede) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'Error al buscar usuario',
+                mensaje: 'Error al buscar sede',
                 errors: err
             });
         }
 
-        if (!usuario) {
+        if (!sede) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'El usuario con el id' + id + 'no existe',
-                errors: { message: 'No existe usuario con ese ID' }
+                mensaje: 'El sede con el id' + id + 'no existe',
+                errors: { message: 'No existe sede con ese ID' }
             });
         }
 
-        usuario.nombre = body.nombre;
-        usuario.email = body.email;
-        usuario.role = body.role;
+        sede.nombre = body.nombre;
+        sede.domicilio = body.domicilio;
+        sede.usuario = req.usuario._id;
 
-        usuario.save((err, usuarioGuardado) => {
+        sede.save((err, sedeGuardado) => {
 
             if (err) {
                 return res.status(400).json({
                     ok: false,
-                    mensaje: 'Error al actualizar usuario',
+                    mensaje: 'Error al actualizar sede',
                     errors: err
                 });
             }
 
-            usuarioGuardado.password = ':)';
-
             res.status(200).json({
                 ok: true,
-                usuario: usuarioGuardado
+                sede: sedeGuardado
             });
         })
 
@@ -97,68 +94,66 @@ app.put('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
 
 // =================================
-// Crear un nuevo usuario
+// Crear un nuevo sede
 // =================================
 
 app.post('/', mdAutenticacion.verificaToken, (req, res) => {
 
     var body = req.body;
 
-    var usuario = new Usuario({
+    var sede = new Sede({
         nombre: body.nombre,
-        email: body.email,
-        password: bcrypt.hashSync(body.password, 10),
-        img: body.img,
-        role: body.role
+        domicilio: body.domicilio,
+        usuario: req.usuario._id
+
 
     });
 
-    usuario.save((err, usuarioGuardado) => {
+    sede.save((err, sedeGuardado) => {
 
         if (err) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'Error al crear usuario',
+                mensaje: 'Error al crear sede',
                 errors: err
             });
         }
 
         res.status(201).json({
             ok: true,
-            usuario: usuarioGuardado,
-            usuariotoken: req.usuario
+            usuario: sedeGuardado
         });
     });
 });
 
 // =================================
-// Borrar un usuario por el ID
+// Borrar un sede por el ID
 // =================================
 
 app.delete('/:id', mdAutenticacion.verificaToken, (req, res) => {
 
     var id = req.params.id;
 
-    Usuario.findByIdAndRemove(id, (err, usuarioBorrado) => {
+    Sede.findByIdAndRemove(id, (err, sedeBorrado) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'Error al borrar usuario',
+                mensaje: 'Error al borrar sede',
                 errors: err
             });
         }
-        if (!usuarioBorrado) {
+        if (!sedeBorrado) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'No existe usuario con ese id',
-                errors: { message: 'No existe usuario con ese id' }
+                mensaje: 'No existe sede con ese id',
+                errors: { message: 'No existe sede con ese id' }
             });
         }
 
         res.status(200).json({
             ok: true,
-            usuario: usuarioBorrado
+            sede: sedeBorrado
         });
     });
 });
